@@ -18,6 +18,10 @@ import functools
 import random
 
 from urllib.parse import urlparse
+from util import (
+    Failure,
+    check_env,
+)
 
 from model.base import (
     BasicCredentials,
@@ -56,16 +60,22 @@ class GithubConfig(NamedModelElement):
     def preferred_protocol(self):
         return PreferredProtocol(self.raw.get('preferred_protocol', PreferredProtocol.SSH))
 
-    @functools.lru_cache()
     def credentials(self):
-        if self.raw.get('technicalUser'):
-            return GithubCredentials(self.raw.get('technicalUser'))
-
         if self.raw.get('technical_users'):
             technical_users = [
                 GithubCredentials(user) for user in self.raw.get('technical_users')
             ]
-            return random.choice(technical_users)
+            try:
+                # use the same technical user as in pipeline rendering
+                technical_username = check_env("GITHUB_TECHNICAL_USER")
+                return next(filter(
+                    lambda cred: cred.username() == technical_username, technical_users
+                ))
+            except Failure:
+                return random.choice(technical_users)
+
+        if self.raw.get('technicalUser'):
+            return GithubCredentials(self.raw.get('technicalUser'))
 
     def matches_hostname(self, host_name):
         return host_name.lower() == urlparse(self.http_url()).hostname.lower()

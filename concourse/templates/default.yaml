@@ -16,6 +16,7 @@ resource_registry = pipeline_definition._resource_registry
 
 github = config_set.github()
 disable_tls_validation = "false" if github.tls_validation() else "true"
+github_credentials = github.credentials()
 
 default_container_registry = config_set.container_registry()
 email = config_set.email()
@@ -273,6 +274,7 @@ else:
       SECRETS_SERVER_CONCOURSE_CFG_NAME: ${secrets_server_cfg.secrets().concourse_cfg_name()}
       CONCOURSE_CURRENT_CFG: ${config_set.name()}
       CONCOURSE_CURRENT_TEAM: ${target_team}
+      GITHUB_TECHNICAL_USER: ${github_credentials.username()}
 % if has_component_descriptor_trait(job_variant):
       COMPONENT_NAME: ${job_variant.trait('component_descriptor').component_name()}
 
@@ -329,8 +331,8 @@ else:
   % endfor
   % if clone_repositories:
         # init git config
-        git config --global user.name "${github.credentials().username()}"
-        git config --global user.email "${github.credentials().email_address()}"
+        git config --global user.name "${github_credentials.username()}"
+        git config --global user.email "${github_credentials.email_address()}"
   % endif
 <%
   if cloned_main_repo_name:
